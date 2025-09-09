@@ -1,0 +1,5 @@
+{
+  "name": "React Music Player",
+  "description": "A web-based music player to play local audio files and manage playlists. All your music and playlists are stored locally in your browser.",
+  "requestFramePermissions": []
+}
