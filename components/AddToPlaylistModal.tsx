@@ -1,5 +1,6 @@
 
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
 
@@ -9,11 +10,22 @@ interface AddToPlaylistModalProps {
 }
 
 const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ song, onClose }) => {
-  const { playlists, addSongToPlaylist } = useMusicPlayer();
+  const { playlists, addSongToPlaylist, createPlaylist } = useMusicPlayer();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const handleAddToPlaylist = (playlistId: string) => {
     addSongToPlaylist(song.id, playlistId);
     onClose();
+  };
+
+  const handleCreateAndAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPlaylistName.trim()) {
+      const newPlaylist = await createPlaylist(newPlaylistName.trim());
+      await addSongToPlaylist(song.id, newPlaylist.id);
+      onClose();
+    }
   };
 
   return (
@@ -33,7 +45,33 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ song, onClose }
               </button>
             ))
           ) : (
-            <p className="text-gray-500 text-center py-4">No playlists found. Create one first!</p>
+            <div>
+              {showCreateForm ? (
+                <form onSubmit={handleCreateAndAdd} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    placeholder="New Playlist Name"
+                    className="flex-grow bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-accent"
+                    autoFocus
+                  />
+                  <button type="submit" className="bg-green-accent text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition-colors">
+                    Create
+                  </button>
+                </form>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 mb-4">No playlists found.</p>
+                  <button
+                    onClick={() => setShowCreateForm(true)}
+                    className="bg-green-accent text-white font-bold py-2 px-4 rounded-full hover:bg-green-600 transition-colors"
+                  >
+                    Create New Playlist
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="mt-6 text-right">

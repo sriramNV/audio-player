@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
 import { PlayIcon, MusicNoteIcon, ShuffleIcon, TrashIcon } from '../constants';
@@ -19,18 +19,16 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
     removeSongFromPlaylist 
   } = useMusicPlayer();
 
-  const playlist = useMemo(() => playlists.find(p => p.id === playlistId), [playlists, playlistId]);
-  const playlistSongs = useMemo(() => {
+  const playlist = playlists.find(p => p.id === playlistId);
+  const playlistSongs = React.useMemo(() => {
     if (!playlist) return [];
     return playlist.songIds.map(id => songs.find(s => s.id === id)).filter((s): s is Song => !!s);
   }, [playlist, songs]);
 
   if (!playlist) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-2xl text-white">Playlist not found</h2>
-      </div>
-    );
+    // After deletion, the component re-renders before the view is switched.
+    // Return null to avoid flashing a "not found" message.
+    return null;
   }
   
   const handleDelete = () => {

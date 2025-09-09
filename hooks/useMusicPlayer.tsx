@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Song, Playlist } from '../types';
 import * as db from '../services/db';
@@ -22,7 +23,7 @@ interface MusicPlayerContextType {
   playNext: () => void;
   playPrev: () => void;
   addFilesToLibrary: (files: FileList) => Promise<void>;
-  createPlaylist: (name: string) => Promise<void>;
+  createPlaylist: (name: string) => Promise<Playlist>;
   addSongToPlaylist: (songId: string, playlistId: string) => Promise<void>;
   removeSongFromPlaylist: (songId: string, playlistId: string) => Promise<void>;
   deletePlaylist: (playlistId: string) => Promise<void>;
@@ -224,7 +225,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
   
-  const createPlaylist = async (name: string) => {
+  const createPlaylist = async (name: string): Promise<Playlist> => {
     const newPlaylist: Playlist = {
       id: `playlist-${Date.now()}`,
       name,
@@ -232,6 +233,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     };
     await db.savePlaylist(newPlaylist);
     setPlaylists(prev => [...prev, newPlaylist]);
+    return newPlaylist;
   };
 
   const addSongToPlaylist = async (songId: string, playlistId: string) => {
@@ -253,15 +255,19 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const deletePlaylist = async (playlistId: string) => {
+    try {
       await db.deletePlaylist(playlistId);
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+    } catch (error) {
+        console.error("Failed to delete playlist:", error);
+        alert("Error: Could not delete the playlist.");
+    }
   }
   
   const deleteSongFromLibrary = async (songId: string) => {
     const deletedSongQueueIndex = activeQueue.findIndex(id => id === songId);
     let newCurrentSongIndex = currentSongIndex;
 
-    // Adjust player state if the deleted song affects current playback
     if (currentSong?.id === songId) {
         if (audioRef.current) {
             audioRef.current.pause();
@@ -275,24 +281,29 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         newCurrentSongIndex = currentSongIndex - 1;
     }
     
-    // Perform deletions and updates
-    await db.deleteSong(songId);
-
+    const playlistUpdatePromises: Promise<void>[] = [];
     const updatedPlaylists = playlists.map(p => {
         if (p.songIds.includes(songId)) {
             const newSongIds = p.songIds.filter(id => id !== songId);
             const updatedPlaylist = { ...p, songIds: newSongIds };
-            db.savePlaylist(updatedPlaylist); // Fire-and-forget update in DB
+            playlistUpdatePromises.push(db.savePlaylist(updatedPlaylist));
             return updatedPlaylist;
         }
         return p;
     });
     
-    // Update state
-    setPlaylists(updatedPlaylists);
-    setSongs(prevSongs => prevSongs.filter(s => s.id !== songId));
-    setActiveQueue(prevQueue => prevQueue.filter(id => id !== songId));
-    setCurrentSongIndex(newCurrentSongIndex);
+    try {
+        await db.deleteSong(songId);
+        await Promise.all(playlistUpdatePromises);
+        
+        setPlaylists(updatedPlaylists);
+        setSongs(prevSongs => prevSongs.filter(s => s.id !== songId));
+        setActiveQueue(prevQueue => prevQueue.filter(id => id !== songId));
+        setCurrentSongIndex(newCurrentSongIndex);
+    } catch (error) {
+        console.error("Failed to delete song from library:", error);
+        alert("Error: Could not delete the song.");
+    }
   };
 
   const seek = (time: number) => {
