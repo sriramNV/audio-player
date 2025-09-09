@@ -15,6 +15,9 @@ const Player: React.FC = () => {
   } = useMusicPlayer();
 
   const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || seconds < 0) {
+      return '0:00';
+    }
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
@@ -33,8 +36,9 @@ const Player: React.FC = () => {
   }
 
   return (
-    <footer className="h-24 bg-gray-800 border-t border-gray-700 flex items-center justify-between p-4">
-      <div className="flex items-center gap-4 w-1/4">
+    <footer className="bg-gray-800 border-t border-gray-700 p-3 md:h-24 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      {/* Song Info */}
+      <div className="flex items-center gap-3 w-full md:flex-1 md:min-w-0">
         <div className="w-14 h-14 bg-gray-700 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
             {currentSong.albumArtUrl ? (
                 <img src={currentSong.albumArtUrl} alt={currentSong.name} className="w-full h-full object-cover" />
@@ -42,13 +46,14 @@ const Player: React.FC = () => {
                 <MusicNoteIcon className="w-8 h-8 text-gray-500"/>
             )}
         </div>
-        <div>
+        <div className="min-w-0">
           <h3 className="font-bold text-white truncate">{currentSong.name}</h3>
           <p className="text-sm text-gray-400 truncate">{currentSong.artist || 'Unknown Artist'}</p>
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-2 w-1/2">
+      {/* Controls & Scrubber */}
+      <div className="flex flex-col items-center gap-2 w-full md:w-auto">
         <div className="flex items-center gap-4">
           <button onClick={playPrev} className="text-gray-400 hover:text-white transition-colors">
             <PrevIcon className="w-5 h-5" />
@@ -78,7 +83,8 @@ const Player: React.FC = () => {
         </div>
       </div>
       
-      <div className="w-1/4">
+      {/* Spacer for desktop layout */}
+      <div className="hidden md:flex md:flex-1 justify-end">
         {/* Volume controls could go here */}
       </div>
     </footer>

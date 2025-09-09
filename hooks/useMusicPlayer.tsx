@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Song, Playlist } from '../types';
 import * as db from '../services/db';
@@ -15,6 +16,7 @@ interface MusicPlayerContextType {
   currentSong: Song | null;
   isPlaying: boolean;
   playSong: (songId: string, playlistId?: string) => void;
+  playPlaylist: (playlistId: string) => void;
   togglePlayPause: () => void;
   playNext: () => void;
   playPrev: () => void;
@@ -89,6 +91,13 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
                 audioRef.current.play().catch(e => console.error("Error playing audio:", e));
             }
         }
+    }
+  };
+
+  const playPlaylist = (playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (playlist && playlist.songIds.length > 0) {
+        playSong(playlist.songIds[0], playlistId);
     }
   };
 
@@ -230,7 +239,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   return (
     <MusicPlayerContext.Provider value={{ 
-        songs, playlists, currentSong, isPlaying, playSong, togglePlayPause, playNext, playPrev, 
+        songs, playlists, currentSong, isPlaying, playSong, playPlaylist, togglePlayPause, playNext, playPrev, 
         addFilesToLibrary, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist,
         audioRef, progress, duration, seek
     }}>

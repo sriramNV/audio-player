@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { View } from '../types';
-import { PlusIcon, MusicNoteIcon, PlaylistIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XIcon } from '../constants';
+import { PlusIcon, MusicNoteIcon, PlaylistIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XIcon, PlayIcon, TrashIcon } from '../constants';
 
 interface SidebarProps {
   activeView: View;
@@ -22,9 +22,10 @@ const SidebarToggleIcon = ({ isCollapsed, className = "w-5 h-5" }: { isCollapsed
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isCollapsed, setIsCollapsed, isMobileOpen, setMobileOpen }) => {
-  const { playlists, createPlaylist } = useMusicPlayer();
+  const { playlists, createPlaylist, playPlaylist, deletePlaylist } = useMusicPlayer();
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [showInput, setShowInput] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (showInput && isCollapsed) {
@@ -41,6 +42,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isCollapse
       setShowInput(false);
     }
   };
+  
+  const handleDeletePlaylist = (playlistId: string) => {
+    deletePlaylist(playlistId);
+    setConfirmDeleteId(null);
+  }
 
   const baseItemClass = "flex items-center gap-4 px-4 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors duration-200";
   const activeItemClass = "bg-gray-800 text-white";
@@ -89,17 +95,40 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isCollapse
             <div className="flex-1 overflow-y-auto">
               <h2 className={`px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ${isCollapsed ? 'md:hidden' : 'block'}`}>Playlists</h2>
               <div className="space-y-1">
-                {playlists.map(playlist => (
+                {playlists.map(playlist => {
+                  if (confirmDeleteId === playlist.id && !isCollapsed) {
+                    return (
+                        <div key={playlist.id} className="p-2 bg-gray-700 rounded-md text-sm">
+                            <p className="text-white mb-2 text-center text-xs">Delete '{playlist.name}'?</p>
+                            <div className="flex justify-center gap-2">
+                                <button onClick={() => handleDeletePlaylist(playlist.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded">Yes</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="bg-gray-500 hover:bg-gray-600 text-white text-xs font-bold py-1 px-3 rounded">No</button>
+                            </div>
+                        </div>
+                    );
+                  }
+                  return (
                   <div
                     key={playlist.id}
-                    onClick={() => setActiveView({ type: 'playlist', id: playlist.id })}
                     title={playlist.name}
-                    className={`${baseItemClass} ${activeView.type === 'playlist' && activeView.id === playlist.id ? activeItemClass : inactiveItemClass} ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`group relative ${baseItemClass} ${activeView.type === 'playlist' && activeView.id === playlist.id ? activeItemClass : inactiveItemClass} ${isCollapsed ? 'justify-center' : ''}`}
                   >
-                    <PlaylistIcon className="w-5 h-5 flex-shrink-0"/>
-                    <span className={`truncate ${isCollapsed ? 'md:hidden' : ''}`}>{playlist.name}</span>
+                    <div onClick={() => setActiveView({ type: 'playlist', id: playlist.id })} className="flex items-center gap-4 flex-grow min-w-0">
+                      <PlaylistIcon className="w-5 h-5 flex-shrink-0"/>
+                      <span className={`truncate ${isCollapsed ? 'md:hidden' : ''}`}>{playlist.name}</span>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800/80 rounded-full">
+                          <button onClick={() => playPlaylist(playlist.id)} className="text-gray-400 hover:text-white p-1" title="Play Playlist">
+                              <PlayIcon className="w-5 h-5"/>
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(playlist.id)} className="text-gray-400 hover:text-white p-1" title="Delete Playlist">
+                              <TrashIcon className="w-5 h-5"/>
+                          </button>
+                      </div>
+                    )}
                   </div>
-                ))}
+                )})}
               </div>
             </div>
             {showInput && !isCollapsed ? (

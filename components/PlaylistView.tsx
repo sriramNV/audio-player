@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useMemo } from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
 import { PlayIcon, MusicNoteIcon } from '../constants';
@@ -8,8 +9,7 @@ interface PlaylistViewProps {
 }
 
 const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
-  const { playlists, songs, playSong, removeSongFromPlaylist, deletePlaylist } = useMusicPlayer();
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const { playlists, songs, playSong, removeSongFromPlaylist } = useMusicPlayer();
 
   const playlist = useMemo(() => playlists.find(p => p.id === playlistId), [playlists, playlistId]);
   const playlistSongs = useMemo(() => {
@@ -24,11 +24,6 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
       </div>
     );
   }
-
-  const handleDelete = () => {
-      deletePlaylist(playlist.id);
-      // Note: App component should handle switching view away from deleted playlist
-  };
 
   const formatDuration = (seconds: number) => {
     if (isNaN(seconds)) return '0:00';
@@ -49,25 +44,6 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
             <p className="text-gray-400 mt-2">{playlistSongs.length} songs</p>
         </div>
       </div>
-      
-      {showConfirmDelete ? (
-        <div className="bg-red-900/50 border border-red-500 text-white p-4 rounded-lg flex justify-between items-center">
-            <span>Are you sure you want to delete this playlist?</span>
-            <div>
-                <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md mr-2">
-                    Yes, Delete
-                </button>
-                <button onClick={() => setShowConfirmDelete(false)} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md">
-                    Cancel
-                </button>
-            </div>
-        </div>
-      ) : (
-        <button onClick={() => setShowConfirmDelete(true)} className="bg-red-600 text-white font-bold py-2 px-4 rounded-full hover:bg-red-700 transition-colors text-sm">
-            Delete Playlist
-        </button>
-      )}
-
 
       {playlistSongs.length === 0 ? (
         <div className="text-center py-20 bg-gray-800/50 rounded-lg">
