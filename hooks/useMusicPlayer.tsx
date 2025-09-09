@@ -17,6 +17,7 @@ interface MusicPlayerContextType {
   isPlaying: boolean;
   playSong: (songId: string, playlistId?: string) => void;
   playPlaylist: (playlistId: string) => void;
+  playShuffled: (playlistId: string) => void;
   togglePlayPause: () => void;
   playNext: () => void;
   playPrev: () => void;
@@ -25,6 +26,7 @@ interface MusicPlayerContextType {
   addSongToPlaylist: (songId: string, playlistId: string) => Promise<void>;
   removeSongFromPlaylist: (songId: string, playlistId: string) => Promise<void>;
   deletePlaylist: (playlistId: string) => Promise<void>;
+  deleteSongFromLibrary: (songId: string) => Promise<void>;
   audioRef: React.RefObject<HTMLAudioElement>;
   progress: number;
   duration: number;
@@ -101,6 +103,30 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const playShuffled = (playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (playlist && playlist.songIds.length > 0) {
+        const shuffledIds = [...playlist.songIds];
+        // Fisher-Yates shuffle
+        for (let i = shuffledIds.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
+        }
+        
+        const firstSongId = shuffledIds[0];
+        setActiveQueue(shuffledIds);
+        setCurrentSongIndex(0);
+        setIsPlaying(true);
+        if (audioRef.current) {
+            const song = songs.find(s => s.id === firstSongId);
+            if (song) {
+                audioRef.current.src = song.url;
+                audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+            }
+        }
+    }
+  };
+
   const togglePlayPause = () => {
     if (currentSong) {
       setIsPlaying(!isPlaying);
@@ -110,14 +136,34 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   const playNext = useCallback(() => {
     if (activeQueue.length > 0) {
       const nextIndex = (currentSongIndex + 1) % activeQueue.length;
-      playSong(activeQueue[nextIndex], playlists.find(p => p.songIds.includes(activeQueue[0]))?.id);
+      const nextSongId = activeQueue[nextIndex];
+      
+      setCurrentSongIndex(nextIndex);
+      setIsPlaying(true);
+      if(audioRef.current) {
+          const song = songs.find(s => s.id === nextSongId);
+          if(song) {
+              audioRef.current.src = song.url;
+              audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+          }
+      }
     }
-  }, [currentSongIndex, activeQueue, playlists, songs]);
+  }, [currentSongIndex, activeQueue, songs]);
 
   const playPrev = () => {
     if (activeQueue.length > 0) {
       const prevIndex = (currentSongIndex - 1 + activeQueue.length) % activeQueue.length;
-      playSong(activeQueue[prevIndex], playlists.find(p => p.songIds.includes(activeQueue[0]))?.id);
+      const prevSongId = activeQueue[prevIndex];
+
+      setCurrentSongIndex(prevIndex);
+      setIsPlaying(true);
+      if(audioRef.current) {
+          const song = songs.find(s => s.id === prevSongId);
+          if(song) {
+              audioRef.current.src = song.url;
+              audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+          }
+      }
     }
   };
   
@@ -211,6 +257,44 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
   }
   
+  const deleteSongFromLibrary = async (songId: string) => {
+    const deletedSongQueueIndex = activeQueue.findIndex(id => id === songId);
+    let newCurrentSongIndex = currentSongIndex;
+
+    // Adjust player state if the deleted song affects current playback
+    if (currentSong?.id === songId) {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+        }
+        setIsPlaying(false);
+        setProgress(0);
+        setDuration(0);
+        newCurrentSongIndex = -1;
+    } else if (deletedSongQueueIndex !== -1 && deletedSongQueueIndex < currentSongIndex) {
+        newCurrentSongIndex = currentSongIndex - 1;
+    }
+    
+    // Perform deletions and updates
+    await db.deleteSong(songId);
+
+    const updatedPlaylists = playlists.map(p => {
+        if (p.songIds.includes(songId)) {
+            const newSongIds = p.songIds.filter(id => id !== songId);
+            const updatedPlaylist = { ...p, songIds: newSongIds };
+            db.savePlaylist(updatedPlaylist); // Fire-and-forget update in DB
+            return updatedPlaylist;
+        }
+        return p;
+    });
+    
+    // Update state
+    setPlaylists(updatedPlaylists);
+    setSongs(prevSongs => prevSongs.filter(s => s.id !== songId));
+    setActiveQueue(prevQueue => prevQueue.filter(id => id !== songId));
+    setCurrentSongIndex(newCurrentSongIndex);
+  };
+
   const seek = (time: number) => {
     if (audioRef.current) {
         audioRef.current.currentTime = time;
@@ -239,8 +323,8 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   return (
     <MusicPlayerContext.Provider value={{ 
-        songs, playlists, currentSong, isPlaying, playSong, playPlaylist, togglePlayPause, playNext, playPrev, 
-        addFilesToLibrary, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist,
+        songs, playlists, currentSong, isPlaying, playSong, playPlaylist, playShuffled, togglePlayPause, playNext, playPrev, 
+        addFilesToLibrary, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist, deleteSongFromLibrary,
         audioRef, progress, duration, seek
     }}>
       {children}

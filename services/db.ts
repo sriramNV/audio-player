@@ -104,6 +104,21 @@ export const getAllSongs = (): Promise<Song[]> => {
     });
 };
 
+export const deleteSong = (songId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        if (!db) reject('DB not initialized');
+        const transaction = db.transaction([SONGS_STORE, SONG_FILES_STORE], 'readwrite');
+        const songsStore = transaction.objectStore(SONGS_STORE);
+        const songFilesStore = transaction.objectStore(SONG_FILES_STORE);
+
+        songsStore.delete(songId);
+        songFilesStore.delete(songId);
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+    });
+};
+
 
 export const savePlaylist = (playlist: Playlist): Promise<void> => {
     return new Promise((resolve, reject) => {

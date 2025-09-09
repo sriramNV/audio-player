@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
-import { PlayIcon, PlusIcon } from '../constants';
+import { PlayIcon, PlusIcon, TrashIcon } from '../constants';
 import AddToPlaylistModal from './AddToPlaylistModal';
 
 const AddSongButton: React.FC = () => {
@@ -44,7 +44,7 @@ const AddSongButton: React.FC = () => {
 };
 
 const LibraryView: React.FC = () => {
-  const { songs, playSong } = useMusicPlayer();
+  const { songs, playSong, deleteSongFromLibrary } = useMusicPlayer();
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
   const formatDuration = (seconds: number) => {
@@ -52,6 +52,12 @@ const LibraryView: React.FC = () => {
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  };
+
+  const handleDeleteSong = (song: Song) => {
+    if (window.confirm(`Are you sure you want to permanently delete "${song.name}" from your library? This action cannot be undone.`)) {
+        deleteSongFromLibrary(song.id);
+    }
   };
 
   return (
@@ -67,7 +73,7 @@ const LibraryView: React.FC = () => {
         </div>
       ) : (
       <div className="text-left">
-          <div className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_4rem] gap-4 px-4 py-2 text-gray-400 text-sm font-semibold border-b border-gray-700">
+          <div className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] gap-4 px-4 py-2 text-gray-400 text-sm font-semibold border-b border-gray-700">
               <span className="text-center">#</span>
               <span>Title</span>
               <span>Artist</span>
@@ -76,18 +82,21 @@ const LibraryView: React.FC = () => {
               <span />
           </div>
           {songs.map((song, index) => (
-              <div key={song.id} className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_4rem] items-center gap-4 px-4 py-2 hover:bg-gray-800 rounded-lg group">
+              <div key={song.id} className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] items-center gap-4 px-4 py-2 hover:bg-gray-800 rounded-lg group">
                   <span className="text-gray-400 text-center">{index + 1}</span>
                   <span className="text-white truncate">{song.name}</span>
                   <span className="text-gray-400 truncate">{song.artist || 'Unknown Artist'}</span>
                   <span className="text-gray-400 truncate">{song.album || 'Unknown Album'}</span>
                   <span className="text-gray-400">{formatDuration(song.duration)}</span>
-                  <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => playSong(song.id)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-3">
+                    <button onClick={() => playSong(song.id)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Play">
                       <PlayIcon className="w-5 h-5" />
                     </button>
-                    <button onClick={() => setSelectedSong(song)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setSelectedSong(song)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Add to playlist">
                       <PlusIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => handleDeleteSong(song)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete from library">
+                        <TrashIcon className="w-5 h-5" />
                     </button>
                   </div>
               </div>
