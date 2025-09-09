@@ -16,6 +16,7 @@ interface MusicPlayerContextType {
   playlists: Playlist[];
   currentSong: Song | null;
   isPlaying: boolean;
+  activePlaylistId: string | null;
   playSong: (songId: string, playlistId?: string) => void;
   playPlaylist: (playlistId: string) => void;
   playShuffled: (playlistId: string) => void;
@@ -42,6 +43,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [activeQueue, setActiveQueue] = useState<string[]>([]);
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -79,8 +81,10 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (playlistId) {
         const playlist = playlists.find(p => p.id === playlistId);
         queue = playlist ? playlist.songIds : songs.map(s => s.id);
+        setActivePlaylistId(playlistId);
     } else {
         queue = songs.map(s => s.id);
+        setActivePlaylistId(null);
     }
     const songIndex = queue.findIndex(id => id === songId);
     if(songIndex !== -1) {
@@ -114,6 +118,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
             [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
         }
         
+        setActivePlaylistId(playlistId);
         const firstSongId = shuffledIds[0];
         setActiveQueue(shuffledIds);
         setCurrentSongIndex(0);
@@ -268,6 +273,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     const deletedSongQueueIndex = activeQueue.findIndex(id => id === songId);
     let newCurrentSongIndex = currentSongIndex;
 
+    // Adjust player state if the deleted song was playing or in the queue before the current song
     if (currentSong?.id === songId) {
         if (audioRef.current) {
             audioRef.current.pause();
@@ -276,27 +282,29 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         setIsPlaying(false);
         setProgress(0);
         setDuration(0);
-        newCurrentSongIndex = -1;
+        newCurrentSongIndex = -1; // Reset player
     } else if (deletedSongQueueIndex !== -1 && deletedSongQueueIndex < currentSongIndex) {
-        newCurrentSongIndex = currentSongIndex - 1;
+        newCurrentSongIndex = currentSongIndex - 1; // Adjust index as queue will shrink
     }
     
-    const playlistUpdatePromises: Promise<void>[] = [];
-    const updatedPlaylists = playlists.map(p => {
+    // Prepare a list of playlists that need to be updated
+    const playlistsToUpdate: Playlist[] = [];
+    const updatedPlaylistsLocally = playlists.map(p => {
         if (p.songIds.includes(songId)) {
             const newSongIds = p.songIds.filter(id => id !== songId);
             const updatedPlaylist = { ...p, songIds: newSongIds };
-            playlistUpdatePromises.push(db.savePlaylist(updatedPlaylist));
+            playlistsToUpdate.push(updatedPlaylist);
             return updatedPlaylist;
         }
         return p;
     });
     
     try {
-        await db.deleteSong(songId);
-        await Promise.all(playlistUpdatePromises);
+        // Perform a single atomic database operation to delete the song and update all affected playlists
+        await db.deleteSongAndUpdatePlaylists(songId, playlistsToUpdate);
         
-        setPlaylists(updatedPlaylists);
+        // On success, update the application state
+        setPlaylists(updatedPlaylistsLocally);
         setSongs(prevSongs => prevSongs.filter(s => s.id !== songId));
         setActiveQueue(prevQueue => prevQueue.filter(id => id !== songId));
         setCurrentSongIndex(newCurrentSongIndex);
@@ -334,7 +342,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   return (
     <MusicPlayerContext.Provider value={{ 
-        songs, playlists, currentSong, isPlaying, playSong, playPlaylist, playShuffled, togglePlayPause, playNext, playPrev, 
+        songs, playlists, currentSong, isPlaying, activePlaylistId, playSong, playPlaylist, playShuffled, togglePlayPause, playNext, playPrev, 
         addFilesToLibrary, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist, deleteSongFromLibrary,
         audioRef, progress, duration, seek
     }}>

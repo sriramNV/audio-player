@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
-import { PlayIcon, MusicNoteIcon, ShuffleIcon, TrashIcon } from '../constants';
+import { PlayIcon, PauseIcon, MusicNoteIcon, ShuffleIcon, TrashIcon } from '../constants';
 
 interface PlaylistViewProps {
   playlistId: string;
@@ -16,7 +17,10 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
     playPlaylist,
     playShuffled,
     deletePlaylist,
-    removeSongFromPlaylist 
+    removeSongFromPlaylist,
+    isPlaying,
+    activePlaylistId,
+    togglePlayPause
   } = useMusicPlayer();
 
   const playlist = playlists.find(p => p.id === playlistId);
@@ -24,6 +28,8 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
     if (!playlist) return [];
     return playlist.songIds.map(id => songs.find(s => s.id === id)).filter((s): s is Song => !!s);
   }, [playlist, songs]);
+
+  const isCurrentPlaylistPlaying = isPlaying && activePlaylistId === playlistId;
 
   if (!playlist) {
     // After deletion, the component re-renders before the view is switched.
@@ -59,12 +65,12 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId }) => {
       
       <div className="flex items-center gap-6 py-4">
         <button
-            onClick={() => playPlaylist(playlist.id)}
+            onClick={() => isCurrentPlaylistPlaying ? togglePlayPause() : playPlaylist(playlist.id)}
             disabled={playlistSongs.length === 0}
             className="bg-green-accent text-black rounded-full p-4 shadow-lg hover:scale-105 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
-            aria-label="Play playlist"
+            aria-label={isCurrentPlaylistPlaying ? "Pause" : "Play playlist"}
         >
-            <PlayIcon className="w-7 h-7" />
+            {isCurrentPlaylistPlaying ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
         </button>
         <button
             onClick={() => playShuffled(playlist.id)}

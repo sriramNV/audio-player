@@ -104,18 +104,29 @@ export const getAllSongs = (): Promise<Song[]> => {
     });
 };
 
-export const deleteSong = (songId: string): Promise<void> => {
+export const deleteSongAndUpdatePlaylists = (songId: string, playlistsToUpdate: Playlist[]): Promise<void> => {
     return new Promise((resolve, reject) => {
-        if (!db) reject('DB not initialized');
-        const transaction = db.transaction([SONGS_STORE, SONG_FILES_STORE], 'readwrite');
+        if (!db) {
+            return reject('DB not initialized');
+        }
+        const transaction = db.transaction([SONGS_STORE, SONG_FILES_STORE, PLAYLISTS_STORE], 'readwrite');
+        
         const songsStore = transaction.objectStore(SONGS_STORE);
         const songFilesStore = transaction.objectStore(SONG_FILES_STORE);
+        const playlistsStore = transaction.objectStore(PLAYLISTS_STORE);
 
+        // Delete the song from both song stores
         songsStore.delete(songId);
         songFilesStore.delete(songId);
+        
+        // Update any playlists that contained the song
+        playlistsToUpdate.forEach(p => playlistsStore.put(p));
 
         transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
+        transaction.onerror = () => {
+            console.error("Transaction error in deleteSongAndUpdatePlaylists:", transaction.error);
+            reject(transaction.error);
+        };
     });
 };
 
