@@ -113,12 +113,6 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
   
   const addFilesToLibrary = async (files: FileList) => {
-    if (!window.jsmediatags) {
-        console.error("jsmediatags library not loaded.");
-        alert("Error: Could not load metadata library. Please refresh the page and try again.");
-        return;
-    }
-
     const songPromises = Array.from(files)
       .filter(file => file.type.startsWith('audio/'))
       .map(file => new Promise<{ metadata: Omit<Song, 'url' | 'albumArtUrl'> & { albumArt?: Blob }, file: File }>((resolve) => {
@@ -152,15 +146,20 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
             audio.src = objectUrl;
         };
 
-        window.jsmediatags.read(file, {
-          onSuccess: (tag: any) => {
-            processFile(tag.tags);
-          },
-          onError: (error: any) => {
-            console.warn(`Could not read metadata for ${file.name}:`, error);
+        if (window.jsmediatags) {
+            window.jsmediatags.read(file, {
+              onSuccess: (tag: any) => {
+                processFile(tag.tags);
+              },
+              onError: (error: any) => {
+                console.warn(`Could not read metadata for ${file.name}:`, error);
+                processFile();
+              }
+            });
+        } else {
+            console.warn("jsmediatags library not loaded. Proceeding without metadata.");
             processFile();
-          }
-        });
+        }
       }));
 
     const newSongs = await Promise.all(songPromises);
