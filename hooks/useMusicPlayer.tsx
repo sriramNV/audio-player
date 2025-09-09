@@ -33,6 +33,8 @@ interface MusicPlayerContextType {
   progress: number;
   duration: number;
   seek: (time: number) => void;
+  songToAddToPlaylist: Song | null;
+  setSongToAddToPlaylist: (song: Song | null) => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(undefined);
@@ -46,6 +48,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [songToAddToPlaylist, setSongToAddToPlaylist] = useState<Song | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -242,11 +245,23 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const addSongToPlaylist = async (songId: string, playlistId: string) => {
-    const playlist = playlists.find(p => p.id === playlistId);
-    if (playlist && !playlist.songIds.includes(songId)) {
-      const updatedPlaylist = { ...playlist, songIds: [...playlist.songIds, songId] };
+    const playlistToUpdatePromise = new Promise<Playlist | null>((resolve) => {
+      setPlaylists(currentPlaylists => {
+        const playlist = currentPlaylists.find(p => p.id === playlistId);
+        if (playlist && !playlist.songIds.includes(songId)) {
+          const updatedPlaylist = { ...playlist, songIds: [...playlist.songIds, songId] };
+          resolve(updatedPlaylist);
+          return currentPlaylists.map(p => (p.id === playlistId ? updatedPlaylist : p));
+        }
+        resolve(null);
+        return currentPlaylists;
+      });
+    });
+
+    const updatedPlaylist = await playlistToUpdatePromise;
+
+    if (updatedPlaylist) {
       await db.savePlaylist(updatedPlaylist);
-      setPlaylists(prev => prev.map(p => (p.id === playlistId ? updatedPlaylist : p)));
     }
   };
 
@@ -344,7 +359,8 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     <MusicPlayerContext.Provider value={{ 
         songs, playlists, currentSong, isPlaying, activePlaylistId, playSong, playPlaylist, playShuffled, togglePlayPause, playNext, playPrev, 
         addFilesToLibrary, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist, deleteSongFromLibrary,
-        audioRef, progress, duration, seek
+        audioRef, progress, duration, seek,
+        songToAddToPlaylist, setSongToAddToPlaylist
     }}>
       {children}
       <audio ref={audioRef} />

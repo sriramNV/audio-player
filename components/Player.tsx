@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
-import { PlayIcon, PauseIcon, NextIcon, PrevIcon, MusicNoteIcon } from '../constants';
+import { PlayIcon, PauseIcon, NextIcon, PrevIcon, MusicNoteIcon, PlusIcon, TrashIcon } from '../constants';
 
 const Player: React.FC = () => {
   const { 
@@ -11,7 +11,9 @@ const Player: React.FC = () => {
     playPrev,
     progress,
     duration,
-    seek 
+    seek,
+    setSongToAddToPlaylist,
+    deleteSongFromLibrary
   } = useMusicPlayer();
 
   const formatTime = (seconds: number) => {
@@ -25,6 +27,18 @@ const Player: React.FC = () => {
 
   const onScrub = (value: string) => {
     seek(Number(value));
+  };
+
+  const handleAddToPlaylist = () => {
+    if (currentSong) {
+        setSongToAddToPlaylist(currentSong);
+    }
+  };
+
+  const handleDeleteSong = () => {
+      if (currentSong && window.confirm(`Are you sure you want to permanently delete "${currentSong.name}" from your library?`)) {
+          deleteSongFromLibrary(currentSong.id);
+      }
   };
   
   if (!currentSong) {
@@ -46,9 +60,18 @@ const Player: React.FC = () => {
                 <MusicNoteIcon className="w-8 h-8 text-gray-500"/>
             )}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="font-bold text-white truncate">{currentSong.name}</h3>
           <p className="text-sm text-gray-400 truncate">{currentSong.artist || 'Unknown Artist'}</p>
+        </div>
+        {/* Mobile-only action buttons */}
+        <div className="flex md:hidden items-center gap-3 ml-auto pr-2">
+            <button onClick={handleAddToPlaylist} className="text-gray-400 hover:text-white" title="Add to playlist">
+                <PlusIcon className="w-5 h-5" />
+            </button>
+            <button onClick={handleDeleteSong} className="text-gray-400 hover:text-red-500" title="Delete from library">
+                <TrashIcon className="w-5 h-5" />
+            </button>
         </div>
       </div>
 

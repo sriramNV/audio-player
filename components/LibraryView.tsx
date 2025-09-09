@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { Song } from '../types';
 import { PlayIcon, PlusIcon, TrashIcon } from '../constants';
-import AddToPlaylistModal from './AddToPlaylistModal';
 
 const AddSongButton: React.FC = () => {
     const { addFilesToLibrary } = useMusicPlayer();
@@ -44,8 +43,7 @@ const AddSongButton: React.FC = () => {
 };
 
 const LibraryView: React.FC = () => {
-  const { songs, playSong, deleteSongFromLibrary } = useMusicPlayer();
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const { songs, playSong, deleteSongFromLibrary, setSongToAddToPlaylist } = useMusicPlayer();
 
   const formatDuration = (seconds: number) => {
     if (isNaN(seconds)) return '0:00';
@@ -73,38 +71,39 @@ const LibraryView: React.FC = () => {
         </div>
       ) : (
       <div className="text-left">
-          <div className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] gap-4 px-4 py-2 text-gray-400 text-sm font-semibold border-b border-gray-700">
+          <div className="grid grid-cols-[2rem_4fr_3fr_1fr] md:grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] gap-4 px-4 py-2 text-gray-400 text-sm font-semibold border-b border-gray-700">
               <span className="text-center">#</span>
               <span>Title</span>
-              <span>Artist</span>
-              <span>Album</span>
+              <span className="hidden md:block">Artist</span>
+              <span className="hidden md:block">Album</span>
               <span>Duration</span>
-              <span />
+              <span className="hidden md:block" />
           </div>
           {songs.map((song, index) => (
-              <div key={song.id} className="grid grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] items-center gap-4 px-4 py-2 hover:bg-gray-800 rounded-lg group">
+              <div 
+                key={song.id} 
+                className="grid grid-cols-[2rem_4fr_3fr_1fr] md:grid-cols-[2rem_4fr_3fr_3fr_1fr_6rem] items-center gap-4 px-4 py-2 hover:bg-gray-800 rounded-lg group cursor-pointer"
+                onClick={() => playSong(song.id)}
+              >
                   <span className="text-gray-400 text-center">{index + 1}</span>
                   <span className="text-white truncate">{song.name}</span>
-                  <span className="text-gray-400 truncate">{song.artist || 'Unknown Artist'}</span>
-                  <span className="text-gray-400 truncate">{song.album || 'Unknown Album'}</span>
+                  <span className="text-gray-400 truncate hidden md:block">{song.artist || 'Unknown Artist'}</span>
+                  <span className="text-gray-400 truncate hidden md:block">{song.album || 'Unknown Album'}</span>
                   <span className="text-gray-400">{formatDuration(song.duration)}</span>
-                  <div className="flex items-center justify-end gap-3">
-                    <button onClick={() => playSong(song.id)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Play">
+                  <div className="hidden md:flex items-center justify-end gap-3">
+                    <button onClick={(e) => { e.stopPropagation(); playSong(song.id); }} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Play">
                       <PlayIcon className="w-5 h-5" />
                     </button>
-                    <button onClick={() => setSelectedSong(song)} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Add to playlist">
+                    <button onClick={(e) => { e.stopPropagation(); setSongToAddToPlaylist(song); }} className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Add to playlist">
                       <PlusIcon className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDeleteSong(song)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete from library">
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSong(song); }} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete from library">
                         <TrashIcon className="w-5 h-5" />
                     </button>
                   </div>
               </div>
           ))}
       </div>
-      )}
-      {selectedSong && (
-        <AddToPlaylistModal song={selectedSong} onClose={() => setSelectedSong(null)} />
       )}
     </div>
   );

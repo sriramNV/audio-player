@@ -5,11 +5,12 @@ import Sidebar from './components/Sidebar';
 import LibraryView from './components/LibraryView';
 import PlaylistView from './components/PlaylistView';
 import Player from './components/Player';
+import AddToPlaylistModal from './components/AddToPlaylistModal';
 import { View } from './types';
 import { MenuIcon } from './constants';
 
 const AppContent: React.FC = () => {
-  const { playlists } = useMusicPlayer();
+  const { playlists, songToAddToPlaylist, setSongToAddToPlaylist } = useMusicPlayer();
   const [activeView, setActiveView] = useState<View>({ type: 'library' });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -56,6 +57,9 @@ const AppContent: React.FC = () => {
         </main>
       </div>
       <Player />
+      {songToAddToPlaylist && (
+        <AddToPlaylistModal song={songToAddToPlaylist} onClose={() => setSongToAddToPlaylist(null)} />
+      )}
     </div>
   );
 };
